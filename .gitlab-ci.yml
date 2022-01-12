@@ -1,0 +1,33 @@
+stages:
+  - deploy
+
+deploy:review:
+  stage: deploy
+  tags:
+    - docker
+  image: registry.greendatasoft.ru/ubuntu:18.04-custom
+  before_script:
+    ## login to alakazam
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$ALAKAZAM_INFOBOT_SSH_PRIVATE_KEY")
+    - mkdir -p ~/.ssh
+    - echo "$ALAKAZAM_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    ## fill git.properties
+    - echo commit $CI_COMMIT_SHA > git.properties
+    - echo date `date` >> git.properties
+    ## environment
+    - SSH_HOST=infobot@192.168.0.104
+    - PROJECT_PATH=/home/infobot/apps/greenpy/${CI_COMMIT_REF_NAME}
+    - IMAGE_NAME=${REGISTRY}/greenpy-python:latest
+  script:
+    ## prepare folder
+    - ssh ${SSH_HOST} "mkdir -p ${PROJECT_PATH}"
+    - scp -rp * ${SSH_HOST}:${PROJECT_PATH}
+    ## build image
+    - ssh ${SSH_HOST} "docker login -u $REGISTRY_USER -p $REGISTRY_PWD $REGISTRY"
+    - ssh ${SSH_HOST} "cd ${PROJECT_PATH} && docker build -t ${IMAGE_NAME} ."
+    - ssh ${SSH_HOST} "docker push ${IMAGE_NAME}"
+    - ssh ${SSH_HOST} "docker pull ${IMAGE_NAME}"
+    ## start container
+    - ssh ${SSH_HOST} "cd ${PROJECT_PATH} && docker-compose down && docker-compose up -d"
+  except: [ ]

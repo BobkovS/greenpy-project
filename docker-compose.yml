@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  greenpy-python:
+    restart: unless-stopped
+    image: registry.greendatasoft.ru/greenpy-python:latest
+    environment:
+      - WORKDIR_PATH=/home/greenpy/workdir
+      - SERVER_TIMEOUT=10800
+      - SERVER_WORKERS=3
+      - SERVER_THREADS=2
+      - LIMIT_REQUEST_LINE=4094
+      - LIMIT_REQUEST_FIELD_SIZE=8190
+    volumes:
+      - /home/infobot/apps/greenpy_share:/home/greenpy/workdir
+    container_name: greenpy-python
+    ports:
+      - '9999:8080'
